@@ -79,7 +79,8 @@ router.post('/signup', (req, res) => {
         });
     } else {
         // Check if user already exists
-        User.find({email}).then(result => {
+        User.find({email})
+        .then(result => {
             if (result.length) {
                 // A user already exists
                 res.json({
@@ -196,17 +197,30 @@ const sendVerificationEmail = ({_id, email}, res) => {
 
 // verify email
 router.get("/verify/:userId/:uniqueString", (req, res) => {
+    /*
+    Example:
+    req.params:  {
+        userId: '6543b9e9a569b0b7b9f06498',
+        uniqueString: 'a6a79f23-5940-4fa4-9501-a06faa8d0b286543b9e9a569b0b7b9f06498'
+    }
+    */
     let { userId, uniqueString } = req.params;
-    console.log(userId);
+    /*
+        Error:  ObjectParameterError: Parameter "filter" to find() must be an object, got "6543b9e9a569b0b7b9f06498" (type string)
+        Solution: put the variable inside {} to make it an object
+        Example: UserVerification.find(userId) => UserVerification.find({userId}) | UserVerification.find({userId: req.params.userId})
+
+    */
     UserVerification
-    .find(userId)
+    .find({userId})
     .then((result) => {
+        console.log("result: ", result);
         if (result.length > 0) {
             // user verification record exists so we process
 
-            const {expiresAt} = result[0];
+            const {expiresAt} = result[0]; // {expiresAt} will give you the value of the key "expiresAt" from the object {result}
             const hashedUniqueString = result[0].uniqueString;
-
+            // console.log("expiresAt: ", {expiresAt});
             // checking for expired unique string
             if (expiresAt < Date.now()) {
                 // record has expired so we delete it
@@ -276,7 +290,7 @@ router.get("/verify/:userId/:uniqueString", (req, res) => {
         // res.redirect(`/user/verified/error=true&message=${message}`);
     })
     .catch((error) => {
-        console.log(error);
+        console.log("error: ", error);
         let message = "An error occured while checking for existing user verification record";
         res.redirect(`/user/verified/error=true&message=${message}`);
     });
@@ -291,6 +305,8 @@ router.get("/verified", (req, res) => {
 // Signin
 router.post('/signin', (req, res) => {
     let {email, password} = req.body;
+    // console.log("req.body: ", req.body); // req.body => will give you the request that you initiated. (only email & password as you requested)
+
     email = email.trim();
     password = password.trim();
 
@@ -303,6 +319,22 @@ router.post('/signin', (req, res) => {
         // Check if user exists
         User.find({email})
         .then((data) => {
+            // console.log("data: ", data);
+            /**
+             data:  [
+                {
+                    _id: new ObjectId('6543bdf6240af39a0308d4a0'),
+                    name: 'ben',
+                    email: '00@gmail.com',
+                    password: '$2b$10$DVwad9x7JvVs58Wc/94B/.SFWGHV.XsN3dAfx1GvHrtG.VdG51FhG',
+                    dateOfBirth: 1990-09-09T22:00:00.000Z,
+                    verified: true,
+                    __v: 0
+                }
+            ]
+             */
+            // console.log("data.length: ", data.length);  // 1
+
             if (data.length) {
                 // User exists
 
@@ -317,9 +349,12 @@ router.post('/signin', (req, res) => {
                 } else {
                     
                     const hashedPassword = data[0].password;
-                    bcrypt.compare(password, hashedPassword)
-                    .then((result) => {
-                        if (result) {
+
+                    bcrypt.compare(password, hashedPassword) // Compare between them and tell me if they're matched! 
+                    .then((result) => {  
+
+                        if (result) {  // if paswords match then the 'result' is true
+
                             // Password match
                             res.json({
                                 status: "SUCCESS",
